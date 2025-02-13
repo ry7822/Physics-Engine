@@ -1,0 +1,5 @@
+# Ignore node modules dir
+node_modules/
+
+# Ignore Webstorm files
+.idea/
