@@ -1,5 +1,3 @@
-import { walls } from './mapfiles/map.js';
-
 class Block {
   constructor(x, y, width, height, parent = null) {
     this.parent = parent;
@@ -10,18 +8,22 @@ class Block {
     this.vx = 0;
     this.vy = 0;
     this.elasticity = 0.8;
-    this.friction = 0.4;
+    this.friction = 0.95;
 
     this.angle = 0;
 
     this.image = new Image();
-    this.image.src = "img/guy_fieri.png";
+    this.image.src = "sprite/guy_fieri.png";
   }
 
   draw(ctx, cameraY) {
+    if (isPressed) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(this.x + 10, this.y - cameraY, 10, 10)
+    }
+
     ctx.save();
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2 - cameraY);
-    ctx.rotate(this.angle);
     ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
     ctx.restore();
   }
@@ -35,45 +37,62 @@ class Block {
 
     this.check_for_collision_with_walls();
 
-    if (this.y > this.parent.winheight - this.height) {
-      this.y = this.parent.winheight - this.height;
-      this.vy = -this.vy * this.elasticity;
-      this.parent.move_up = true;
-    } else {
-      this.vy *= this.parent.air_resistance;
-    }
-
     this.vx *= this.parent.air_resistance;
+    this.vy *= this.parent.air_resistance;
   }
 
   check_for_collision_with_walls() {
+    this.check_for_top_collision();
+    this.check_for_bottom_collision();
+    this.check_for_left_collision();
+    this.check_for_right_collision();
+  }
+
+  check_for_top_collision() {
     for (const wall of this.parent.walls) {
-      if (this.x < wall.x + wall.width && this.x + this.width > wall.x &&
-          this.y < wall.y + wall.height && this.y + this.height > wall.y) {
+      if (((wall.x <= this.x && this.x <= wall.x + wall.width) || (wall.x <= this.x + this.width && this.x + this.width <= wall.x + wall.width)) && (wall.y + wall.height >= this.y && wall.y + (wall.height / 2) <= this.y)) {
+        this.y = wall.y + wall.height + 0.01; // Add a small offset
+        this.vy = -this.vy * this.elasticity;
+        this.vx *= this.friction;
+      }
+    }
+  }
 
-        if (this.vx > 0 && this.x + this.width > wall.x && this.x < wall.x) {
-          this.vx = -this.vx * this.elasticity;
-          this.x = wall.x - this.width;
-        } else if (this.vx < 0 && this.x < wall.x + wall.width && this.x + this.width > wall.x + wall.width) {
-          this.vx = -this.vx * this.elasticity;
-          this.x = wall.x + wall.width;
-        }
+  check_for_bottom_collision() {
+    for (const wall of this.parent.walls) {
+      if (((wall.x <= this.x && this.x <= wall.x + wall.width) || (wall.x <= this.x + this.width && this.x + this.width <= wall.x + wall.width)) && (wall.y <= this.y + this.height && wall.y + (wall.height / 2) >= this.y + this.height)) {
+        this.y = wall.y - this.height - 0.01; // Add a small offset
+        this.vy = -this.vy * this.elasticity;
+        this.vx *= this.friction;
+      }
+    }
+  }
 
-        if (this.vy > 0 && this.y + this.height > wall.y && this.y < wall.y) {
-          this.vy = -this.vy * this.elasticity;
-          this.y = wall.y - this.height;
-        } else if (this.vy < 0 && this.y < wall.y + wall.height && this.y + this.height > wall.y + wall.height) {
-          this.vy = -this.vy * this.elasticity;
-          this.y = wall.y + wall.height;
-        }
+  check_for_left_collision() {
+    for (const wall of this.parent.walls) {
+      if (((wall.y <= this.y && this.y <= wall.y + wall.height) || (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) && (wall.x + wall.width >= this.x && wall.x + (wall.width / 2) <= this.x)) {
+        this.x = wall.x + wall.width + 0.01; // Add a small offset
+        this.vx = -this.vx * this.elasticity;
+        this.vy *= this.friction;
+        console.log("collision left");
+      }
+    }
+  }
 
-        // Apply friction to the opposite velocity component
-        this.vx *= (1 - (this.friction / 2));
-        this.vy *= (1 - (this.friction / 2));
+  check_for_right_collision() {
+    for (const wall of this.parent.walls) {
+      if (((wall.y <= this.y && this.y <= wall.y + wall.height) || (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) && (wall.x <= this.x + this.width && wall.x + (wall.width / 2) >= this.x + this.width)) {
+        this.x = wall.x - this.width - 0.01; // Add a small offset
+        this.vx = -this.vx * this.elasticity;
+        this.vy *= this.friction;
+        console.log("collision right");
       }
     }
   }
 }
+
+// This is stupid, fix later
+let isPressed = false;
 
 class Game {
   constructor() {
@@ -88,20 +107,57 @@ class Game {
     this.air_resistance = 0.995;
     this.elasticity = 0.6;
 
-    this.players = [new Block(375, 0, 50, 50, this)];
+    this.players = [new Block(375, 200, 20, 20, this)];
     this.cameraY = 0;
 
-    this.walls = walls.map(wall => new Wall(wall.x, wall.y, wall.width, wall.height, wall.imageSrc));
+    this.walls = [];
 
-    this.init();
+    this.loadWalls().then(() => {
+        this.init();
+    });
+
+    this.mouseMoveHandler = this.mouseMoveHandler.bind(this);
+    this.lastMouseX = 0;
+    this.lastMouseTime = 0;
+    this.mouseSpeedX = 0;
+  }
+
+  async loadWalls() {
+    const response = await fetch('mapfiles/map.json');
+    const wallsData = await response.json();
+    this.walls = wallsData.map(wall => new Wall(wall.x, wall.y, wall.width, wall.height, wall.imageSrc));
   }
 
   init() {
-    this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-    this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
-    this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
-    window.addEventListener('keydown', (e) => this.onKeyDown(e));
+    window.addEventListener("keydown", (e) => this.onKeyDown(e));
+    window.addEventListener("mousedown", this.onMouseDown);
+    window.addEventListener("mouseup", this.onMouseUp);
+    window.addEventListener("mousemove", this.mouseMoveHandler);
+
     this.run();
+  }
+
+  mouseMoveHandler(e) {
+    const currentTime = performance.now();
+    const deltaX = e.clientX - this.lastMouseX;
+    const deltaTime = currentTime - this.lastMouseTime;
+
+    if (deltaTime > 0) {
+      this.mouseSpeedX = deltaX / deltaTime;
+    }
+
+    this.lastMouseX = e.clientX;
+    this.lastMouseTime = currentTime;
+  }
+
+  onMouseDown() {
+
+
+    isPressed = !isPressed;
+  }
+
+  onMouseUp() {
+
   }
 
   onKeyDown(e) {
@@ -110,6 +166,8 @@ class Game {
     }
 
     const player = this.players[0];
+
+    // Only for testing purposes [REMOVE]
     if (e.key === 'a' && Math.abs(player.vx) < 0.05 && Math.abs(player.vy) < 0.5) {
       this.players[0].vy -= 30;
       this.players[0].vx -= 16;
@@ -192,7 +250,7 @@ class Game {
 }
 
 class Wall {
-  constructor(x, y, width, height, imageSrc="img/missing_texture.png") {
+  constructor(x, y, width, height, imageSrc="images/tile_1.gif") {
     this.x = x;
     this.y = y;
     this.width = width;
