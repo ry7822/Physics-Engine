@@ -13,18 +13,28 @@ class Block {
 
     this.image = new Image();
     this.image.src = "sprite/guy_fieri.png";
+
+    this.startTime = null;
   }
 
   draw(ctx, cameraY) {
-    if (Game.isPressed) {
-      ctx.fillStyle = "red";
-      if (this.direction === 'left') {
-        ctx.fillRect(this.x - 10, this.y - cameraY, 10, 10);
-      } else {
-        ctx.fillRect(this.x + this.width, this.y - cameraY, 10, 10);
-      }
+    const timer = 100;
 
-      ctx.fillRect(this.x + (10 * this.direction), this.y - cameraY, 10, 10)
+    if (Math.abs(this.parent.player.vx) < 0.1 && Math.abs(this.parent.player.vy) < 1) {
+      if (this.startTime === null) {
+        this.startTime = performance.now();
+      } else if (performance.now() - this.startTime >= timer) {
+        ctx.fillStyle = "red";
+        if (this.direction === 'left') {
+          ctx.fillRect(this.x - 10, this.y - cameraY, 10, 10);
+        } else {
+          ctx.fillRect(this.x + this.width, this.y - cameraY, 10, 10);
+        }
+      }
+    } else {this.startTime = null;}
+
+    if(this.parent.isPressed && this.parent.startPos !== null) {
+      ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
     }
 
     ctx.save();
@@ -109,7 +119,7 @@ class Game {
     this.air_resistance = 0.995;
     this.elasticity = 0.6;
 
-    this.players = [new Block(375, 200, 20, 20, this)];
+    this.player = new Block(375, 200, 20, 20, this);
     this.cameraY = 0;
 
     this.walls = [];
@@ -120,12 +130,8 @@ class Game {
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.mouseMoveHandler = this.mouseMoveHandler.bind(this);
-    this.lastMouseX = 0;
-    this.mouseSpeedX = 0;
-    this.startTime = 0;
     this.isPressed = false;
-
-    this.firstMousePos = null;
+    this.startPos = null;
   }
 
   async loadWalls() {
@@ -143,33 +149,23 @@ class Game {
   }
 
   mouseMoveHandler(e) {
-    let currentPos = e.clientX;
-    let player = this.players[0];
-    if (this.isPressed) {
-      if (e.clientX < this.firstMousePos) {
-        player.direction = 'left';
-        if (this.lastMouseX < currentPos) {
-          this.startTime = performance.now();
-          console.log("Start time: " + this.startTime);
-        }
-        if (this.lastMouseX > currentPos) {
-            console.log("Stopped recording")
-          this.mouseSpeedX = Math.abs(currentPos - this.lastMouseX) / (performance.now() - this.startTime);
-          console.log("Mouse speed: ", this.mouseSpeedX);
-          player.vx = -this.mouseSpeedX * 10;
-          player.vy = -this.mouseSpeedX / 0.5 * 10;
-          console.log("Accelerate right: ", this.mouseSpeedX);
+    if(this.isPressed) {
+      console.log(e.movementX);
+
+      if (this.player.direction === 'left') {
+        // Ignore movement to the left, register movement to the right, if the mouse reaches startPos, accelerate the player, isPressed = false
+        if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
+          this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
           this.isPressed = false;
         }
-
       } else {
-        player.direction = 'right';
+        // Ignore movement to the right, register movement to the left, if the mouse reaches startPos, accelerate the player, isPressed = false
+        if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
+          this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
+          this.isPressed = false;
+        }
       }
-
-      this.lastMouseX = currentPos;
     }
-
-
   }
 
   onMouseDown(e) {
@@ -182,7 +178,12 @@ class Game {
     // Accelerate the sprite in the direction of the mouse movement with the speed calculated above.
     // isPressed = false
     if (!this.isPressed) {
-      this.firstMousePos = e.clientX;
+      this.startPos = e.clientX - this.canvas.getBoundingClientRect().left;
+      if (this.startPos < this.player.x + this.player.width / 2) {
+        this.player.direction = 'left';
+      } else {
+        this.player.direction = 'right';
+      }
     }
     this.isPressed = !this.isPressed;
   }
@@ -192,15 +193,19 @@ class Game {
       this.open_settings_window();
     }
 
-    const player = this.players[0];
-
     // Only for testing purposes [REMOVE]
-    if (e.key === 'a' && Math.abs(player.vx) < 0.05 && Math.abs(player.vy) < 0.5) {
-      this.players[0].vy -= 30;
-      this.players[0].vx -= 16;
-    } else if (e.key === 'd' && Math.abs(player.vx) < 0.05 && Math.abs(player.vy) < 0.5) {
-      this.players[0].vy -= 30;
-      this.players[0].vx += 16;
+    if (e.key === 'a' && Math.abs(this.player.vx) < 0.05 && Math.abs(this.player.vy) < 0.5) {
+      this.player.vy -= 30;
+      this.player.vx -= 16;
+    } else if (e.key === 'd' && Math.abs(this.player.vx) < 0.05 && Math.abs(this.player.vy) < 0.5) {
+      this.player.vy -= 30;
+      this.player.vx += 16;
+    }
+
+    if (e.key === 'ArrowLeft') {
+      this.player.direction = 'left';
+    } else if (e.key === 'ArrowRight') {
+      this.player.direction = 'right';
     }
   }
 
@@ -249,14 +254,11 @@ class Game {
       this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
 
       // Update cameraY based on the player's y-position
-      const player = this.players[0];
-      const targetCameraY = player.y - this.winheight / 2;
+      const targetCameraY = this.player.y - this.winheight / 2;
       this.cameraY += (targetCameraY - this.cameraY) * 0.1;
 
       if (this.move_up) {
-        for (const player of this.players) {
-          player.y -= 0.01;
-        }
+        this.player.y -= 0.01;
         this.move_up = false;
       }
 
@@ -264,10 +266,9 @@ class Game {
         wall.draw(this.ctx, this.cameraY);
       }
 
-      for (const player of this.players) {
-        player.update();
-        player.draw(this.ctx, this.cameraY);
-      }
+      this.player.update();
+      this.player.draw(this.ctx, this.cameraY);
+
 
       requestAnimationFrame(loop);
     };
