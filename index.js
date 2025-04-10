@@ -9,17 +9,22 @@ class Block {
     this.vy = 0;
     this.elasticity = 0.8;
     this.friction = 0.95;
-
-    this.angle = 0;
+    this.direction = 1;
 
     this.image = new Image();
     this.image.src = "sprite/guy_fieri.png";
   }
 
   draw(ctx, cameraY) {
-    if (isPressed) {
+    if (Game.isPressed) {
       ctx.fillStyle = "red";
-      ctx.fillRect(this.x + 10, this.y - cameraY, 10, 10)
+      if (this.direction === 'left') {
+        ctx.fillRect(this.x - 10, this.y - cameraY, 10, 10);
+      } else {
+        ctx.fillRect(this.x + this.width, this.y - cameraY, 10, 10);
+      }
+
+      ctx.fillRect(this.x + (10 * this.direction), this.y - cameraY, 10, 10)
     }
 
     ctx.save();
@@ -91,9 +96,6 @@ class Block {
   }
 }
 
-// This is stupid, fix later
-let isPressed = false;
-
 class Game {
   constructor() {
     this.canvas = document.getElementById('gameCanvas');
@@ -116,10 +118,14 @@ class Game {
         this.init();
     });
 
+    this.onMouseDown = this.onMouseDown.bind(this);
     this.mouseMoveHandler = this.mouseMoveHandler.bind(this);
     this.lastMouseX = 0;
-    this.lastMouseTime = 0;
     this.mouseSpeedX = 0;
+    this.startTime = 0;
+    this.isPressed = false;
+
+    this.firstMousePos = null;
   }
 
   async loadWalls() {
@@ -130,34 +136,55 @@ class Game {
 
   init() {
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
-    window.addEventListener("mousedown", this.onMouseDown);
-    window.addEventListener("mouseup", this.onMouseUp);
+    window.addEventListener("mousedown", (e) => this.onMouseDown(e));
     window.addEventListener("mousemove", this.mouseMoveHandler);
 
     this.run();
   }
 
   mouseMoveHandler(e) {
-    const currentTime = performance.now();
-    const deltaX = e.clientX - this.lastMouseX;
-    const deltaTime = currentTime - this.lastMouseTime;
+    let currentPos = e.clientX;
+    let player = this.players[0];
+    if (this.isPressed) {
+      if (e.clientX < this.firstMousePos) {
+        player.direction = 'left';
+        if (this.lastMouseX < currentPos) {
+          this.startTime = performance.now();
+          console.log("Start time: " + this.startTime);
+        }
+        if (this.lastMouseX > currentPos) {
+            console.log("Stopped recording")
+          this.mouseSpeedX = Math.abs(currentPos - this.lastMouseX) / (performance.now() - this.startTime);
+          console.log("Mouse speed: ", this.mouseSpeedX);
+          player.vx = -this.mouseSpeedX * 10;
+          player.vy = -this.mouseSpeedX / 0.5 * 10;
+          console.log("Accelerate right: ", this.mouseSpeedX);
+          this.isPressed = false;
+        }
 
-    if (deltaTime > 0) {
-      this.mouseSpeedX = deltaX / deltaTime;
+      } else {
+        player.direction = 'right';
+      }
+
+      this.lastMouseX = currentPos;
     }
 
-    this.lastMouseX = e.clientX;
-    this.lastMouseTime = currentTime;
+
   }
 
-  onMouseDown() {
+  onMouseDown(e) {
 
-
-    isPressed = !isPressed;
-  }
-
-  onMouseUp() {
-
+    // If !isPressed:
+    // Get mouse position
+    // Check in which direction the mouse is moving (aka if the mouse is to the left of original position, the sprite should be to the left, and it should check for speed to the right and vice versa)
+    // If the mouse starts moving towards original position (e.clientX is greater/less than lastMouseX), record the time. If the mouse starts moving away again, nullify time.
+    // When the mouse reaches original position, record time again and get deltatime and deltaposition. Divide dPos by dTime to get speed.
+    // Accelerate the sprite in the direction of the mouse movement with the speed calculated above.
+    // isPressed = false
+    if (!this.isPressed) {
+      this.firstMousePos = e.clientX;
+    }
+    this.isPressed = !this.isPressed;
   }
 
   onKeyDown(e) {
