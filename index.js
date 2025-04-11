@@ -25,6 +25,9 @@ class Block {
         this.startTime = performance.now();
       } else if (performance.now() - this.startTime >= timer) {
         ctx.fillStyle = "red";
+        if(this.parent.isPressed && this.parent.startPos !== null) {
+          ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
+        }
         if (this.direction === 'left') {
           ctx.fillRect(this.x - 10, this.y - cameraY, 10, 10);
         } else {
@@ -32,10 +35,6 @@ class Block {
         }
       }
     } else {this.startTime = null;}
-
-    if(this.parent.isPressed && this.parent.startPos !== null) {
-      ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
-    }
 
     ctx.save();
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2 - cameraY);
@@ -148,8 +147,12 @@ class Game {
     this.run();
   }
 
+  isMoving() {
+    return Math.abs(this.player.vx) > 0.05 || Math.abs(this.player.vy) > 0.5;
+  }
+
   mouseMoveHandler(e) {
-    if(this.isPressed) {
+    if(this.isPressed && !this.isMoving()) {
       console.log(e.movementX);
 
       if (this.player.direction === 'left') {
@@ -165,27 +168,25 @@ class Game {
           this.isPressed = false;
         }
       }
+      // Speed limit
+      if (Math.abs(this.player.vx) > 10) {
+        this.player.vx = 10 * Math.sign(this.player.vx);
+      }
     }
   }
 
   onMouseDown(e) {
-
-    // If !isPressed:
-    // Get mouse position
-    // Check in which direction the mouse is moving (aka if the mouse is to the left of original position, the sprite should be to the left, and it should check for speed to the right and vice versa)
-    // If the mouse starts moving towards original position (e.clientX is greater/less than lastMouseX), record the time. If the mouse starts moving away again, nullify time.
-    // When the mouse reaches original position, record time again and get deltatime and deltaposition. Divide dPos by dTime to get speed.
-    // Accelerate the sprite in the direction of the mouse movement with the speed calculated above.
-    // isPressed = false
-    if (!this.isPressed) {
-      this.startPos = e.clientX - this.canvas.getBoundingClientRect().left;
-      if (this.startPos < this.player.x + this.player.width / 2) {
-        this.player.direction = 'left';
-      } else {
-        this.player.direction = 'right';
+    if (!this.isMoving()) {
+      if (!this.isPressed) {
+        this.startPos = e.clientX - this.canvas.getBoundingClientRect().left;
+        if (this.startPos < this.player.x + this.player.width / 2) {
+          this.player.direction = 'left';
+        } else {
+          this.player.direction = 'right';
+        }
       }
+      this.isPressed = !this.isPressed;
     }
-    this.isPressed = !this.isPressed;
   }
 
   onKeyDown(e) {
@@ -200,12 +201,6 @@ class Game {
     } else if (e.key === 'd' && Math.abs(this.player.vx) < 0.05 && Math.abs(this.player.vy) < 0.5) {
       this.player.vy -= 30;
       this.player.vx += 16;
-    }
-
-    if (e.key === 'ArrowLeft') {
-      this.player.direction = 'left';
-    } else if (e.key === 'ArrowRight') {
-      this.player.direction = 'right';
     }
   }
 
