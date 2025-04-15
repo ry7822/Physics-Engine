@@ -243,26 +243,36 @@ class Game {
   }
 
   run() {
-    const loop = () => {
+    const targetFPS = 60;
+    const frameInterval = 1000 / targetFPS;
+    let lastFrameTime = 0;
+
+    const loop = (currentTime) => {
       if (this.done) return;
 
-      this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
+      const deltaTime = currentTime - lastFrameTime;
 
-      // Update cameraY based on the player's y-position
-      const targetCameraY = this.player.y - this.winheight / 2;
-      this.cameraY += (targetCameraY - this.cameraY) * 0.1;
+      if (deltaTime >= frameInterval) {
+        lastFrameTime = currentTime;
 
-      if (this.move_up) {
-        this.player.y -= 0.01;
-        this.move_up = false;
+        this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
+
+        // Update cameraY based on the player's y-position
+        const targetCameraY = this.player.y - this.winheight / 2;
+        this.cameraY += (targetCameraY - this.cameraY) * 0.1;
+
+        if (this.move_up) {
+          this.player.y -= 0.01;
+          this.move_up = false;
+        }
+
+        for (const wall of this.walls) {
+          wall.draw(this.ctx, this.cameraY);
+        }
+
+        this.player.update();
+        this.player.draw(this.ctx, this.cameraY);
       }
-
-      for (const wall of this.walls) {
-        wall.draw(this.ctx, this.cameraY);
-      }
-
-      this.player.update();
-      this.player.draw(this.ctx, this.cameraY);
 
 
       requestAnimationFrame(loop);
