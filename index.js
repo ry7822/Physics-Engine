@@ -13,8 +13,10 @@ class Block {
 
     this.image = new Image();
     this.image.src = "sprite/guy_fieri.png";
+    // Placeholder for the animation logic
 
     this.startTime = null;
+    this.position = null;
   }
 
   draw(ctx, cameraY) {
@@ -24,14 +26,26 @@ class Block {
       if (this.startTime === null) {
         this.startTime = performance.now();
       } else if (performance.now() - this.startTime >= timer) {
-        ctx.fillStyle = "red";
+
+        // Placeholder / test framework for the animation logic, placeholder numbers
+        if (this.parent.distance < 20) {
+          this.position = 0;
+        } else if (this.parent.distance < 100) {
+          this.position = 1;
+        } else if (this.parent.distance < 200) {
+          this.position = 2;
+        } else {
+          this.position = 3;
+        }
+
         if(this.parent.isPressed && this.parent.startPos !== null) {
           ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
         }
         if (this.direction === 'left') {
-          ctx.fillRect(this.x - 10, this.y - cameraY, 10, 10);
+          // Minus width of the block to avoid drawing inside the sprite, this is not necessary when the placeholder is removed.
+          ctx.fillRect(this.x - 10 * (this.position + 1), this.y - cameraY, 10, 10);
         } else {
-          ctx.fillRect(this.x + this.width, this.y - cameraY, 10, 10);
+          ctx.fillRect(this.x + this.width + 10 * this.position, this.y - cameraY, 10, 10);
         }
       }
     } else {this.startTime = null;}
@@ -107,6 +121,7 @@ class Block {
 
 class Game {
   constructor() {
+    this.parent = parent;
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.winwidth = this.canvas.width;
@@ -131,6 +146,7 @@ class Game {
     this.mouseMoveHandler = this.mouseMoveHandler.bind(this);
     this.isPressed = false;
     this.startPos = null;
+    this.distance = null;
   }
 
   async loadWalls() {
@@ -152,8 +168,16 @@ class Game {
   }
 
   mouseMoveHandler(e) {
-    if(this.isPressed && !this.isMoving()) {
+    if (this.isPressed) {
+      this.distance = Math.abs(e.clientX - this.canvas.getBoundingClientRect().left - this.startPos);
+    }
+
+    if (this.isPressed && !this.isMoving()) {
       console.log(e.movementX);
+
+      if (e.movementX >= 10) {
+        this.parent.fillStyle = "blue";
+      }
 
       if (this.player.direction === 'left') {
         // Ignore movement to the left, register movement to the right, if the mouse reaches startPos, accelerate the player, isPressed = false
