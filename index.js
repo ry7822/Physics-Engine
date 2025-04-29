@@ -50,6 +50,11 @@ class Block {
       }
     } else {this.startTime = null;}
 
+    // Draw hitbox outline for testing
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(this.x, this.y - cameraY, this.width, this.height);
+
     ctx.save();
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2 - cameraY);
     ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
@@ -57,23 +62,48 @@ class Block {
   }
 
   update() {
+    const prevX = this.x;
+    const prevY = this.y;
 
     this.vy += this.parent.gravity;
 
-    this.y += this.vy;
-    this.x += this.vx;
+    const dx = this.vx;
+    const dy = this.vy;
 
-    this.check_for_collision_with_walls();
+    // Perform continuous collision detection
+    this.continuous_collision_detection(prevX, prevY, dx, dy);
 
     this.vx *= this.parent.air_resistance;
     this.vy *= this.parent.air_resistance;
   }
 
+  continuous_collision_detection(prevX, prevY, dx, dy) {
+    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))); // Number of steps based on velocity
+    const stepX = dx / steps;
+    const stepY = dy / steps;
+
+    for (let i = 1; i <= steps; i++) {
+      const nextX = prevX + stepX * i;
+      const nextY = prevY + stepY * i;
+
+      this.x = nextX;
+      this.y = nextY;
+
+      if (this.check_for_collision_with_walls()) {
+        break; // Stop further movement if a collision is detected
+      }
+    }
+  }
+
   check_for_collision_with_walls() {
-    this.check_for_top_collision();
-    this.check_for_bottom_collision();
-    this.check_for_left_collision();
-    this.check_for_right_collision();
+    let collided = false;
+
+    if (this.check_for_top_collision()) {collided = true; console.log("top collision");}
+    if (this.check_for_bottom_collision()) {collided = true; console.log("bottom collision");}
+    if (this.check_for_left_collision()) {collided = true; console.log("left collision");}
+    if (this.check_for_right_collision()) {collided = true; console.log("right collision");}
+
+    return collided;
   }
 
   check_for_top_collision() {
@@ -82,6 +112,7 @@ class Block {
         this.y = wall.y + wall.height + 0.01; // Add a small offset
         this.vy = -this.vy * this.elasticity;
         this.vx *= this.friction;
+        return true;
       }
     }
   }
@@ -92,28 +123,37 @@ class Block {
         this.y = wall.y - this.height - 0.01; // Add a small offset
         this.vy = -this.vy * this.elasticity;
         this.vx *= this.friction;
+        return true;
       }
     }
   }
 
   check_for_left_collision() {
     for (const wall of this.parent.walls) {
-      if (((wall.y <= this.y && this.y <= wall.y + wall.height) || (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) && (wall.x + wall.width >= this.x && wall.x + (wall.width / 2) <= this.x)) {
-        this.x = wall.x + wall.width + 0.01; // Add a small offset
-        this.vx = -this.vx * this.elasticity;
+      if (
+          ((wall.y <= this.y && this.y <= wall.y + wall.height) ||
+              (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) &&
+          (wall.x + wall.width >= this.x && wall.x <= this.x)
+      ) {
+        this.x = wall.x + wall.width + 0.1; // Increase offset slightly
+        this.vx = Math.max(-this.vx * this.elasticity, -5); // Clamp velocity
         this.vy *= this.friction;
-        console.log("collision left");
+        return true;
       }
     }
   }
 
   check_for_right_collision() {
     for (const wall of this.parent.walls) {
-      if (((wall.y <= this.y && this.y <= wall.y + wall.height) || (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) && (wall.x <= this.x + this.width && wall.x + (wall.width / 2) >= this.x + this.width)) {
-        this.x = wall.x - this.width - 0.01; // Add a small offset
-        this.vx = -this.vx * this.elasticity;
+      if (
+          ((wall.y <= this.y && this.y <= wall.y + wall.height) ||
+              (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) &&
+          (wall.x <= this.x + this.width && wall.x + wall.width >= this.x + this.width)
+      ) {
+        this.x = wall.x - this.width - 0.1; // Increase offset slightly
+        this.vx = Math.min(-this.vx * this.elasticity, 5); // Clamp velocity
         this.vy *= this.friction;
-        console.log("collision right");
+        return true;
       }
     }
   }
@@ -173,7 +213,7 @@ class Game {
     }
 
     if (this.isPressed && !this.isMoving()) {
-      console.log(e.movementX);
+      //console.log(e.movementX);
 
       if (e.movementX >= 10) {
         this.parent.fillStyle = "blue";
@@ -183,12 +223,14 @@ class Game {
         // Ignore movement to the left, register movement to the right, if the mouse reaches startPos, accelerate the player, isPressed = false
         if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
           this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
           this.isPressed = false;
         }
       } else {
         // Ignore movement to the right, register movement to the left, if the mouse reaches startPos, accelerate the player, isPressed = false
         if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
           this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
           this.isPressed = false;
         }
       }
@@ -267,42 +309,40 @@ class Game {
   }
 
   run() {
-    const targetFPS = 60;
-    const frameInterval = 1000 / targetFPS;
-    let lastFrameTime = 0;
+    let lastFrameTime = performance.now();
 
     const loop = (currentTime) => {
       if (this.done) return;
 
       const deltaTime = currentTime - lastFrameTime;
+      lastFrameTime = currentTime;
 
-      if (deltaTime >= frameInterval) {
-        lastFrameTime = currentTime;
+      // Calculate FPS for debugging
+      const fps = Math.round(1000 / deltaTime);
+      //console.log(`FPS: ${fps}`);
 
-        this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
+      this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
 
-        // Update cameraY based on the player's y-position
-        const targetCameraY = this.player.y - this.winheight / 2;
-        this.cameraY += (targetCameraY - this.cameraY) * 0.1;
+      // Update cameraY based on the player's y-position
+      const targetCameraY = this.player.y - this.winheight / 2;
+      this.cameraY += (targetCameraY - this.cameraY) * 0.1;
 
-        if (this.move_up) {
-          this.player.y -= 0.01;
-          this.move_up = false;
-        }
-
-        for (const wall of this.walls) {
-          wall.draw(this.ctx, this.cameraY);
-        }
-
-        this.player.update();
-        this.player.draw(this.ctx, this.cameraY);
+      if (this.move_up) {
+        this.player.y -= 0.01;
+        this.move_up = false;
       }
 
+      for (const wall of this.walls) {
+        wall.draw(this.ctx, this.cameraY);
+      }
+
+      this.player.update();
+      this.player.draw(this.ctx, this.cameraY);
 
       requestAnimationFrame(loop);
     };
 
-    loop();
+    requestAnimationFrame(loop);
   }
 }
 
@@ -317,6 +357,10 @@ class Wall {
   }
 
   draw(ctx, cameraY) {
+    ctx.strokeStyle = 'green';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.x, this.y - cameraY, this.width, this.height);
+
     ctx.drawImage(this.image, this.x, this.y - cameraY, this.width, this.height);
   }
 }
