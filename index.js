@@ -42,7 +42,7 @@ class Block {
           ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
         }
         if (this.direction === 'left') {
-          // Minus width of the block to avoid drawing inside the sprite, this is not necessary when the placeholder is removed.
+          // Minus the width of the block to avoid drawing inside the sprite, this is not necessary when the placeholder is removed.
           ctx.fillRect(this.x - 10 * (this.position + 1), this.y - cameraY, 10, 10);
         } else {
           ctx.fillRect(this.x + this.width + 10 * this.position, this.y - cameraY, 10, 10);
@@ -50,7 +50,7 @@ class Block {
       }
     } else {this.startTime = null;}
 
-    // Draw hitbox outline for testing
+    // Draw the hitbox outline for testing
     ctx.strokeStyle = 'red';
     ctx.lineWidth = 1;
     ctx.strokeRect(this.x, this.y - cameraY, this.width, this.height);
@@ -211,13 +211,13 @@ class Game {
   }
 
   mouseMoveHandler(e) {
-    // Store current movement with timestamp
+    // Store current movement with a timestamp
     this.mouseMovements.push({
       movementX: e.movementX,
       timestamp: performance.now()
     });
 
-    // Remove old movements (older than 500ms)
+    // Remove old movements (older than 500 ms)
     const currentTime = performance.now();
     this.mouseMovements = this.mouseMovements.filter(
         movement => currentTime - movement.timestamp <= this.movementHistoryDuration
