@@ -187,6 +187,9 @@ class Game {
     this.isPressed = false;
     this.startPos = null;
     this.distance = null;
+
+    this.mouseMovements = [];
+    this.movementHistoryDuration = 500; // in milliseconds
   }
 
   async loadWalls() {
@@ -208,38 +211,56 @@ class Game {
   }
 
   mouseMoveHandler(e) {
+    // Store current movement with timestamp
+    this.mouseMovements.push({
+      movementX: e.movementX,
+      timestamp: performance.now()
+    });
+
+    // Remove old movements (older than 500ms)
+    const currentTime = performance.now();
+    this.mouseMovements = this.mouseMovements.filter(
+        movement => currentTime - movement.timestamp <= this.movementHistoryDuration
+    );
+
+    // Calculate averaged movement
+    let averageMovementX = 0;
+    if (this.mouseMovements.length > 0) {
+      averageMovementX = this.mouseMovements.reduce((sum, movement) => sum + movement.movementX, 0)
+          / this.mouseMovements.length;
+    }
+
     if (this.isPressed) {
       this.distance = Math.abs(e.clientX - this.canvas.getBoundingClientRect().left - this.startPos);
     }
 
     if (this.isPressed && !this.isMoving()) {
-      //console.log(e.movementX);
-
-      if (e.movementX >= 10) {
+      if (averageMovementX >= 10) {
         this.parent.fillStyle = "blue";
       }
 
       if (this.player.direction === 'left') {
-        // Ignore movement to the left, register movement to the right, if the mouse reaches startPos, accelerate the player, isPressed = false
+        // Use averaged movement for position calculation
         if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
           this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
           this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
           this.isPressed = false;
         }
       } else {
-        // Ignore movement to the right, register movement to the left, if the mouse reaches startPos, accelerate the player, isPressed = false
         if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
           this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
           this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
           this.isPressed = false;
         }
       }
+
       // Speed limit
       if (Math.abs(this.player.vx) > 10) {
         this.player.vx = 10 * Math.sign(this.player.vx);
       }
     }
   }
+
 
   onMouseDown(e) {
     if (!this.isMoving()) {
