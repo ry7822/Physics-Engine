@@ -67,6 +67,10 @@ class Block {
 
     this.vy += this.parent.gravity;
 
+    if (Math.abs(this.vy) > 30) {
+      this.vy = 30 * Math.sign(this.vy);
+    }
+
     const dx = this.vx;
     const dy = this.vy;
 
@@ -108,55 +112,97 @@ class Block {
 
   check_for_top_collision() {
     for (const wall of this.parent.walls) {
-      if (((wall.x <= this.x && this.x <= wall.x + wall.width) || (wall.x <= this.x + this.width && this.x + this.width <= wall.x + wall.width)) && (wall.y + wall.height >= this.y && wall.y + (wall.height / 2) <= this.y)) {
-        this.y = wall.y + wall.height + 0.01; // Add a small offset
-        this.vy = -this.vy * this.elasticity;
-        this.vx *= this.friction;
-        return true;
-      }
+        // Check if there's enough horizontal overlap first, prevents false positives
+        const horizontalOverlap = 
+            this.x + this.width > wall.x + 1 && // Add a small threshold
+            this.x < wall.x + wall.width - 1;    // Add a small threshold
+        
+        if (horizontalOverlap && 
+            wall.y + wall.height >= this.y && 
+            wall.y + (wall.height / 2) <= this.y) {
+            
+            this.y = wall.y + wall.height + 0.01;
+            this.vy = -this.vy * this.elasticity;
+            this.vx *= this.friction;
+            return true;
+        }
     }
-  }
+    return false;
+}
 
   check_for_bottom_collision() {
     for (const wall of this.parent.walls) {
-      if (((wall.x <= this.x && this.x <= wall.x + wall.width) || (wall.x <= this.x + this.width && this.x + this.width <= wall.x + wall.width)) && (wall.y <= this.y + this.height && wall.y + (wall.height / 2) >= this.y + this.height)) {
-        this.y = wall.y - this.height - 0.01; // Add a small offset
-        this.vy = -this.vy * this.elasticity;
-        this.vx *= this.friction;
-        return true;
-      }
+        // Check if there's enough horizontal overlap first, prevents false positives
+        const horizontalOverlap =
+            this.x + this.width > wall.x + 1 && // Add a small threshold
+            this.x < wall.x + wall.width - 1;    // Add a small threshold
+
+        if (horizontalOverlap &&
+            wall.y <= this.y + this.height &&
+            wall.y + (wall.height / 2) >= this.y + this.height) {
+
+            this.y = wall.y - this.height - 0.01;
+            this.vy = -this.vy * this.elasticity;
+            this.vx *= this.friction;
+            return true;
+        }
     }
-  }
+    return false;
+}
 
   check_for_left_collision() {
     for (const wall of this.parent.walls) {
-      if (
-          ((wall.y <= this.y && this.y <= wall.y + wall.height) ||
-              (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) &&
-          (wall.x + wall.width >= this.x && wall.x <= this.x)
-      ) {
-        this.x = wall.x + wall.width + 0.1; // Increase offset slightly
-        this.vx = Math.max(-this.vx * this.elasticity, -5); // Clamp velocity
-        this.vy *= this.friction;
-        return true;
-      }
+        // Check if there's enough vertical overlap first, prevents false positives
+        const verticalOverlap = 
+            this.y + this.height > wall.y + 1 && // Add a small threshold
+            this.y < wall.y + wall.height - 1;    // Add a small threshold
+        
+        if (verticalOverlap && 
+            wall.x + wall.width >= this.x && 
+            wall.x <= this.x) {
+            
+            this.x = wall.x + wall.width + 0.1;
+            this.vx = Math.max(-this.vx * this.elasticity, -5);
+            this.vy *= this.friction;
+            return true;
+        }
+
+        if (this.x <= 0) {
+            this.x = 0;
+            this.vx = Math.max(-this.vx * this.elasticity, -5);
+            this.vy *= this.friction;
+            return true;
+        }
     }
-  }
+    return false;
+}
 
   check_for_right_collision() {
     for (const wall of this.parent.walls) {
-      if (
-          ((wall.y <= this.y && this.y <= wall.y + wall.height) ||
-              (wall.y <= this.y + this.height && this.y + this.height <= wall.y + wall.height)) &&
-          (wall.x <= this.x + this.width && wall.x + wall.width >= this.x + this.width)
-      ) {
-        this.x = wall.x - this.width - 0.1; // Increase offset slightly
-        this.vx = Math.min(-this.vx * this.elasticity, 5); // Clamp velocity
-        this.vy *= this.friction;
-        return true;
-      }
+        // Check if there's enough vertical overlap first, prevents false positives
+        const verticalOverlap = 
+            this.y + this.height > wall.y + 1 && // Add a small threshold
+            this.y < wall.y + wall.height - 1;    // Add a small threshold
+        
+        if (verticalOverlap && 
+            wall.x <= this.x + this.width && 
+            wall.x + wall.width >= this.x + this.width) {
+            
+            this.x = wall.x - this.width - 0.1;
+            this.vx = Math.min(-this.vx * this.elasticity, 5);
+            this.vy *= this.friction;
+            return true;
+        }
+
+        if (this.x + this.width >= this.parent.winwidth) {
+            this.x = this.parent.winwidth - this.width;
+            this.vx = Math.min(-this.vx * this.elasticity, 5);
+            this.vy *= this.friction;
+            return true;
+        }
     }
-  }
+    return false;
+}
 }
 
 class Game {
@@ -173,7 +219,7 @@ class Game {
     this.air_resistance = 0.995;
     this.elasticity = 0.6;
 
-    this.player = new Block(375, 200, 20, 20, this);
+    this.player = new Block(375, 0, 20, 20, this);
     this.cameraY = 0;
 
     this.walls = [];
@@ -243,20 +289,20 @@ class Game {
         // Use averaged movement for position calculation
         if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
           this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -1.5;
           this.isPressed = false;
         }
       } else {
         if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
           this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -1.5;
           this.isPressed = false;
         }
       }
 
       // Speed limit
-      if (Math.abs(this.player.vx) > 10) {
-        this.player.vx = 10 * Math.sign(this.player.vx);
+      if (Math.abs(this.player.vx) > 15) {
+        this.player.vx = 15 * Math.sign(this.player.vx);
       }
     }
   }
