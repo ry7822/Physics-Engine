@@ -217,7 +217,6 @@ class Game {
 
     this.gravity = 0.5;
     this.air_resistance = 0.995;
-    this.elasticity = 0.6;
 
     this.player = new Block(375, 0, 20, 20, this);
     this.cameraY = 0;
@@ -245,7 +244,6 @@ class Game {
   }
 
   init() {
-    window.addEventListener("keydown", (e) => this.onKeyDown(e));
     window.addEventListener("mousedown", (e) => this.onMouseDown(e));
     window.addEventListener("mousemove", this.mouseMoveHandler);
 
@@ -322,77 +320,18 @@ class Game {
     }
   }
 
-  onKeyDown(e) {
-    if (e.key === 'Escape') {
-      this.open_settings_window();
-    }
-
-    // Only for testing purposes [REMOVE]
-    if (e.key === 'a' && Math.abs(this.player.vx) < 0.05 && Math.abs(this.player.vy) < 0.5) {
-      this.player.vy -= 30;
-      this.player.vx -= 16;
-    } else if (e.key === 'd' && Math.abs(this.player.vx) < 0.05 && Math.abs(this.player.vy) < 0.5) {
-      this.player.vy -= 30;
-      this.player.vx += 16;
-    }
-  }
-
-  open_settings_window() {
-    const settings_window = document.createElement('div');
-    settings_window.style.position = 'absolute';
-    settings_window.style.top = '50%';
-    settings_window.style.left = '50%';
-    settings_window.style.transform = 'translate(-50%, -50%)';
-    settings_window.style.backgroundColor = 'white';
-    settings_window.style.padding = '20px';
-    settings_window.style.border = '1px solid black';
-    document.body.appendChild(settings_window);
-
-    const create_slider = (label, param, from, to, step) => {
-      const container = document.createElement('div');
-      container.style.marginBottom = '10px';
-
-      const labelElement = document.createElement('label');
-      labelElement.textContent = label;
-      container.appendChild(labelElement);
-
-      const input = document.createElement('input');
-      input.type = 'range';
-      input.min = from;
-      input.max = to;
-      input.step = step;
-      input.value = this[param];
-      input.addEventListener('input', (event) => {
-        this[param] = parseFloat(event.target.value);
-      });
-      container.appendChild(input);
-
-      settings_window.appendChild(container);
-    };
-    create_slider('Gravity', 'gravity', 0, 2, 0.01);
-    create_slider('Friction', 'friction', 0, 1, 0.01);
-    create_slider('Air Resistance', 'air_resistance', 0, 1, 0.001);
-    create_slider('Elasticity', 'elasticity', 0, 1, 0.01);
-  }
-
   run() {
-    let lastFrameTime = performance.now();
 
     const loop = (currentTime) => {
       if (this.done) return;
 
-      const deltaTime = currentTime - lastFrameTime;
-      lastFrameTime = currentTime;
-
-      // Calculate FPS for debugging
-      // const fps = Math.round(1000 / deltaTime);
-      //console.log(`FPS: ${fps}`);
-
       this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
 
-      // Update cameraY based on the player's y-position
+      // Update cameraY based on the player's y-position with interpolation
       const targetCameraY = this.player.y - this.winheight / 2;
       this.cameraY += (targetCameraY - this.cameraY) * 0.1;
+      // Clamp cameraY to a maximum value (lowest point)
+      this.cameraY = Math.min(350 - this.winheight / 2, this.cameraY);
 
       if (this.move_up) {
         this.player.y -= 0.01;
