@@ -339,7 +339,7 @@ class Game {
       lastFrameTime = currentTime;
 
       // Calculate FPS for debugging
-      const fps = Math.round(1000 / deltaTime);
+      // const fps = Math.round(1000 / deltaTime);
       //console.log(`FPS: ${fps}`);
 
       this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
