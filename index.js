@@ -7,8 +7,8 @@ class Block {
     this.y = y;
     this.vx = 0;
     this.vy = 0;
-    this.elasticity = 0.8;
-    this.friction = 0.95;
+    this.elasticity = 0.65;
+    this.friction = 0.8;
     this.direction = 1;
 
     this.image = new Image();
