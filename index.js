@@ -15,8 +15,12 @@ class Block {
     this.image.src = "sprite/guy_fieri.png";
     this.man = new Image();
     this.man.src = "images/man.gif";
+    this.man2 = new Image();
+    this.man2.src = "images/man2.gif";
     this.club = new Image();
     this.club.src = "images/golfing.gif";
+    this.club2 = new Image();
+    this.club2.src = "images/golfing2.gif";
     // Placeholder for the animation logic
 
     this.startTime = null;
@@ -34,10 +38,16 @@ class Block {
         this.position = Math.min(4*Math.PI/3, this.parent.distance);
 
         if (this.direction === 'left') {
-          // Minus the width of the block to avoid drawing inside the sprite, this is not necessary when the placeholder is removed.
-          ctx.drawImage(this.man, this.x, this.y - cameraY);
+          ctx.drawImage(this.man, this.x - 75, this.y - cameraY - 75, 100, 100);
+          if (this.parent.isHitting) {
+            ctx.drawImage(this.club, this.x - 50, this.y - cameraY - 50, 75, 75);
+          }
         } else {
-          ctx.drawImage(this.man, this.x, this.y - cameraY);
+          ctx.drawImage(this.man2, this.x - 5, this.y - cameraY - 75, 100, 100);
+          if (this.parent.isHitting) {
+            ctx.rotate(this.position);
+            ctx.drawImage(this.club2, this.x, this.y - cameraY - 50, 75, 75);
+          }
         }
       }
     } else {this.startTime = null;}
@@ -63,11 +73,8 @@ class Block {
       this.vy = 30 * Math.sign(this.vy);
     }
 
-    const dx = this.vx;
-    const dy = this.vy;
-
     // Perform continuous collision detection
-    this.continuous_collision_detection(prevX, prevY, dx, dy);
+    this.continuous_collision_detection(prevX, prevY, this.vx, this.vy);
 
     this.vx *= this.parent.air_resistance;
     this.vy *= this.parent.air_resistance;
@@ -231,7 +238,7 @@ class Game {
     this.gravity = 0.5;
     this.air_resistance = 0.995;
 
-    this.player = new Block(50, -1400, 20, 20, this);
+    this.player = new Block(590, 550, 20, 20, this);
     this.cameraY = 0;
 
     this.walls = [];
@@ -243,6 +250,7 @@ class Game {
     this.onMouseDown = this.onMouseDown.bind(this);
     this.mouseMoveHandler = this.mouseMoveHandler.bind(this);
     this.isPressed = false;
+    this.isHitting = false;
     this.startPos = null;
     this.distance = null;
 
@@ -268,36 +276,16 @@ class Game {
   }
 
   mouseMoveHandler(e) {
-    // Store current movement with a timestamp
-    this.mouseMovements.push({
-      movementX: e.movementX,
-      timestamp: performance.now()
-    });
 
-    // Remove old movements (older than 500 ms)
-    const currentTime = performance.now();
-    this.mouseMovements = this.mouseMovements.filter(
-        movement => currentTime - movement.timestamp <= this.movementHistoryDuration
-    );
-
-    // Calculate averaged movement
-    let averageMovementX = 0;
-    if (this.mouseMovements.length > 0) {
-      averageMovementX = this.mouseMovements.reduce((sum, movement) => sum + movement.movementX, 0)
-          / this.mouseMovements.length;
-    }
+    this.isHitting = this.isPressed && !this.isMoving();
 
     if (this.isPressed) {
       this.distance = Math.abs(e.clientX - this.canvas.getBoundingClientRect().left - this.startPos);
     }
 
-    if (this.isPressed && !this.isMoving()) {
-      if (averageMovementX >= 10) {
-        this.parent.fillStyle = "blue";
-      }
+    if (this.isHitting) {
 
       if (this.player.direction === 'left') {
-        // Use averaged movement for position calculation
         if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
           this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
           this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.75;
