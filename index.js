@@ -13,6 +13,10 @@ class Block {
 
     this.image = new Image();
     this.image.src = "sprite/guy_fieri.png";
+    this.man = new Image();
+    this.man.src = "images/man.gif";
+    this.club = new Image();
+    this.club.src = "images/golfing.gif";
     // Placeholder for the animation logic
 
     this.startTime = null;
@@ -27,25 +31,13 @@ class Block {
         this.startTime = performance.now();
       } else if (performance.now() - this.startTime >= timer) {
 
-        // Placeholder / test framework for the animation logic, placeholder numbers
-        if (this.parent.distance < 20) {
-          this.position = 0;
-        } else if (this.parent.distance < 100) {
-          this.position = 1;
-        } else if (this.parent.distance < 200) {
-          this.position = 2;
-        } else {
-          this.position = 3;
-        }
+        this.position = Math.min(4*Math.PI/3, this.parent.distance);
 
-        if(this.parent.isPressed && this.parent.startPos !== null) {
-          ctx.fillRect(this.parent.startPos - 2, 0, 4, 1000);
-        }
         if (this.direction === 'left') {
           // Minus the width of the block to avoid drawing inside the sprite, this is not necessary when the placeholder is removed.
-          ctx.fillRect(this.x - 10 * (this.position + 1), this.y - cameraY, 10, 10);
+          ctx.drawImage(this.man, this.x, this.y - cameraY);
         } else {
-          ctx.fillRect(this.x + this.width + 10 * this.position, this.y - cameraY, 10, 10);
+          ctx.drawImage(this.man, this.x, this.y - cameraY);
         }
       }
     } else {this.startTime = null;}
@@ -124,6 +116,11 @@ class Block {
             this.y = wall.y + wall.height + 0.01;
             this.vy = -this.vy * this.elasticity;
             this.vx *= this.friction;
+            if (wall.image.src.includes("images/tile_234.gif")) {
+              // Win condition
+              this.parent.done = true;
+              window.alert("Do you feel happy about yourself?");
+            }
             return true;
         }
     }
@@ -144,6 +141,11 @@ class Block {
             this.y = wall.y - this.height - 0.01;
             this.vy = -this.vy * this.elasticity;
             this.vx *= this.friction;
+            if (wall.image.src.includes("images/tile_234.gif")) {
+              // Win condition
+              this.parent.done = true;
+              window.alert("Do you feel happy about yourself?");
+            }
             return true;
         }
     }
@@ -164,6 +166,11 @@ class Block {
             this.x = wall.x + wall.width + 0.1;
             this.vx = Math.max(-this.vx * this.elasticity, -5);
             this.vy *= this.friction;
+            if (wall.image.src.includes("images/tile_234.gif")) {
+              // Win condition
+              this.parent.done = true;
+              window.alert("Do you feel happy about yourself?");
+            }
             return true;
         }
 
@@ -191,6 +198,12 @@ class Block {
             this.x = wall.x - this.width - 0.1;
             this.vx = Math.min(-this.vx * this.elasticity, 5);
             this.vy *= this.friction;
+            console.log(wall.image.src);
+            if (wall.image.src.includes("images/tile_234.gif")) {
+              // Win condition
+              this.parent.done = true;
+              window.alert("Do you feel happy about yourself?");
+            }
             return true;
         }
 
@@ -218,7 +231,7 @@ class Game {
     this.gravity = 0.5;
     this.air_resistance = 0.995;
 
-    this.player = new Block(375, 0, 20, 20, this);
+    this.player = new Block(50, -1400, 20, 20, this);
     this.cameraY = 0;
 
     this.walls = [];
@@ -234,7 +247,7 @@ class Game {
     this.distance = null;
 
     this.mouseMovements = [];
-    this.movementHistoryDuration = 500; // in milliseconds
+    this.movementHistoryDuration = 100; // in milliseconds
   }
 
   async loadWalls() {
@@ -287,13 +300,13 @@ class Game {
         // Use averaged movement for position calculation
         if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
           this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -1.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.75;
           this.isPressed = false;
         }
       } else {
         if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
           this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -1.5;
+          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.75;
           this.isPressed = false;
         }
       }
@@ -322,8 +335,8 @@ class Game {
 
   run() {
 
-    const loop = (currentTime) => {
-      if (this.done) return;
+    const loop = () => {
+      if (this.done) {this.player.x=590; this.player.y=550; this.player.vx=0; this.player.vy=0; this.done = false;}
 
       this.ctx.clearRect(0, 0, this.winwidth, this.winheight);
 
