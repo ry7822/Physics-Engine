@@ -21,7 +21,7 @@ class Block {
     this.club.src = "images/golfing.gif";
     this.club2 = new Image();
     this.club2.src = "images/golfing2.gif";
-    // Placeholder for the animation logic
+    this.swingAngle = 0;
 
     this.startTime = null;
     this.position = null;
@@ -34,19 +34,25 @@ class Block {
       if (this.startTime === null) {
         this.startTime = performance.now();
       } else if (performance.now() - this.startTime >= timer) {
-
-        this.position = Math.min(4*Math.PI/3, this.parent.distance);
-
         if (this.direction === 'left') {
           ctx.drawImage(this.man, this.x - 75, this.y - cameraY - 75, 100, 100);
           if (this.parent.isHitting) {
-            ctx.drawImage(this.club, this.x - 50, this.y - cameraY - 50, 75, 75);
+            ctx.save();
+            ctx.translate(this.x - 5, this.y - cameraY - 45);
+            const angle = -Math.PI/6 + (this.swingAngle * (2*Math.PI/3));  // Adjusted starting angle for left side
+            ctx.rotate(angle);
+            ctx.drawImage(this.club, -40, 0, 50, 50);  // Adjusted X offset for left side
+            ctx.restore();
           }
         } else {
           ctx.drawImage(this.man2, this.x - 5, this.y - cameraY - 75, 100, 100);
           if (this.parent.isHitting) {
-            ctx.rotate(this.position);
-            ctx.drawImage(this.club2, this.x, this.y - cameraY - 50, 75, 75);
+            ctx.save();
+            ctx.translate(this.x + 25, this.y - cameraY - 45);
+            const angle = Math.PI/6 - (this.swingAngle * (2*Math.PI/3));  // Right side angle unchanged
+            ctx.rotate(angle);
+            ctx.drawImage(this.club2, -10, 0, 50, 50);
+            ctx.restore();
           }
         }
       }
@@ -265,8 +271,9 @@ class Game {
   }
 
   init() {
-    window.addEventListener("mousedown", (e) => this.onMouseDown(e));
-    window.addEventListener("mousemove", this.mouseMoveHandler);
+    this.canvas.addEventListener("mousedown", (e) => this.onMouseDown(e));
+    this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
+    document.getElementById("cheat").addEventListener("click", () => this.cheating());
 
     this.run();
   }
@@ -276,25 +283,32 @@ class Game {
   }
 
   mouseMoveHandler(e) {
+  this.isHitting = this.isPressed && !this.isMoving();
 
-    this.isHitting = this.isPressed && !this.isMoving();
-
-    if (this.isPressed) {
-      this.distance = Math.abs(e.clientX - this.canvas.getBoundingClientRect().left - this.startPos);
-    }
+  if (this.isPressed) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    
+    // Calculate how far the mouse has been drawn back as a percentage
+    let drawback = Math.abs(mouseX - this.startPos);
+    const maxDrawback = 200; // Maximum pixels to draw back
+    drawback = Math.min(drawback, maxDrawback);
+    
+    // Convert to a value between 0 and 1
+    this.player.swingAngle = drawback / maxDrawback;
+    this.distance = drawback;
 
     if (this.isHitting) {
-
       if (this.player.direction === 'left') {
-        if (e.clientX - this.canvas.getBoundingClientRect().left > this.startPos) {
-          this.player.vx = (e.clientX - this.canvas.getBoundingClientRect().left - this.startPos) * 0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.75;
+        if (mouseX > this.startPos) {
+          this.player.vx = drawback * 0.5;
+          this.player.vy = -drawback * 0.75;
           this.isPressed = false;
         }
       } else {
-        if (e.clientX - this.canvas.getBoundingClientRect().left < this.startPos) {
-          this.player.vx = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.5;
-          this.player.vy = (this.startPos - (e.clientX - this.canvas.getBoundingClientRect().left)) * -0.75;
+        if (mouseX < this.startPos) {
+          this.player.vx = -drawback * 0.5;
+          this.player.vy = -drawback * 0.75;
           this.isPressed = false;
         }
       }
@@ -305,6 +319,7 @@ class Game {
       }
     }
   }
+}
 
 
   onMouseDown(e) {
@@ -320,6 +335,13 @@ class Game {
       this.isPressed = !this.isPressed;
     }
   }
+
+    cheating() {
+        this.player.x = 65;
+        this.player.y = -1330;
+        this.player.vx = 0;
+        this.player.vy = 0;
+    }
 
   run() {
 
