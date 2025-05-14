@@ -24,7 +24,6 @@ class Block {
     this.swingAngle = 0;
 
     this.startTime = null;
-    this.position = null;
   }
 
   draw(ctx, cameraY) {
@@ -39,9 +38,9 @@ class Block {
           if (this.parent.isHitting) {
             ctx.save();
             ctx.translate(this.x - 5, this.y - cameraY - 45);
-            const angle = -Math.PI/6 + (this.swingAngle * (2*Math.PI/3));  // Adjusted starting angle for left side
+            const angle = -Math.PI/6 + (this.swingAngle * (2*Math.PI/3));  // Adjusted starting angle for the left side
             ctx.rotate(angle);
-            ctx.drawImage(this.club, -40, 0, 50, 50);  // Adjusted X offset for left side
+            ctx.drawImage(this.club, -40, 0, 50, 50);  // Adjusted X offset for the left side
             ctx.restore();
           }
         } else {
@@ -233,7 +232,6 @@ class Block {
 
 class Game {
   constructor() {
-    this.parent = parent;
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.winwidth = this.canvas.width;
@@ -258,10 +256,6 @@ class Game {
     this.isPressed = false;
     this.isHitting = false;
     this.startPos = null;
-    this.distance = null;
-
-    this.mouseMovements = [];
-    this.movementHistoryDuration = 100; // in milliseconds
   }
 
   async loadWalls() {
@@ -296,7 +290,6 @@ class Game {
     
     // Convert to a value between 0 and 1
     this.player.swingAngle = drawback / maxDrawback;
-    this.distance = drawback;
 
     if (this.isHitting) {
       if (this.player.direction === 'left') {
