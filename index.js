@@ -38,9 +38,9 @@ class Block {
           if (this.parent.isHitting) {
             ctx.save();
             ctx.translate(this.x - 5, this.y - cameraY - 45);
-            const angle = -Math.PI/6 + (this.swingAngle * (2*Math.PI/3));  // Adjusted starting angle for the left side
+            const angle = -Math.PI/6 + (this.swingAngle * (2*Math.PI/3));
             ctx.rotate(angle);
-            ctx.drawImage(this.club, -40, 0, 50, 50);  // Adjusted X offset for the left side
+            ctx.drawImage(this.club, -40, 0, 50, 50);
             ctx.restore();
           }
         } else {
@@ -48,7 +48,7 @@ class Block {
           if (this.parent.isHitting) {
             ctx.save();
             ctx.translate(this.x + 25, this.y - cameraY - 45);
-            const angle = Math.PI/6 - (this.swingAngle * (2*Math.PI/3));  // Right side angle unchanged
+            const angle = Math.PI/6 - (this.swingAngle * (2*Math.PI/3));
             ctx.rotate(angle);
             ctx.drawImage(this.club2, -10, 0, 50, 50);
             ctx.restore();
@@ -56,11 +56,6 @@ class Block {
         }
       }
     } else {this.startTime = null;}
-
-    // Draw the hitbox outline for testing
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(this.x, this.y - cameraY, this.width, this.height);
 
     ctx.save();
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2 - cameraY);
@@ -379,10 +374,6 @@ class Wall {
   }
 
   draw(ctx, cameraY) {
-    ctx.strokeStyle = 'green';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(this.x, this.y - cameraY, this.width, this.height);
-
     ctx.drawImage(this.image, this.x, this.y - cameraY, this.width, this.height);
   }
 }
